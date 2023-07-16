@@ -1,12 +1,12 @@
 import { Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
-import { User } from "../database/models";
+import { Profile, User } from "../database/models";
 import config from "../utils/config";
 
 export async function signup(req: Request, res: Response): Promise<void> {
   try {
-    const { email, password } = req.body;
+    const { email, password, username } = req.body;
 
     const existingUser = await User.findOne({ where: { email } });
     if (existingUser) {
@@ -22,6 +22,14 @@ export async function signup(req: Request, res: Response): Promise<void> {
       email,
       password: hashedPassword,
       tag: tag,
+    });
+    console.log({
+      username,
+    })
+    await Profile.create({
+      userId: newUser.id,
+      username,
+      email
     });
 
     res.status(201).json({ message: "Inscription réussie", user: newUser });
@@ -39,7 +47,7 @@ export async function login(req: Request, res: Response): Promise<void> {
 
     const user = await User.findOne({
       where: { email },
-      attributes: { exclude: ['updatedAt', 'createdAt'] },
+      attributes: { exclude: ["updatedAt", "createdAt"] },
     });
     if (!user) {
       res.status(401).json({ message: "Utilisateur non trouvé" });

@@ -1,11 +1,17 @@
 import { Model, DataTypes } from "sequelize";
 import sequelize from "../config/sequelize";
+import Profile from "./profile";
 
 class User extends Model {
   public id!: string;
   public email!: string;
   public password!: string;
   public tag!: string;
+
+  public readonly createdAt!: Date;
+  public readonly updatedAt!: Date;
+
+  public readonly profile?: Profile;
 }
 
 User.init(
@@ -36,4 +42,5 @@ User.init(
   }
 );
 
+User.hasOne(Profile, { foreignKey: 'userId', as: 'profile' });
 export default User;
