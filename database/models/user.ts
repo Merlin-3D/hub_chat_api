@@ -1,6 +1,7 @@
 import { Model, DataTypes } from "sequelize";
 import sequelize from "../config/sequelize";
 import Profile from "./profile";
+import Friend from "./friend";
 
 class User extends Model {
   public id!: string;
@@ -12,6 +13,7 @@ class User extends Model {
   public readonly updatedAt!: Date;
 
   public readonly profile?: Profile;
+  public readonly friends?: Friend;
 }
 
 User.init(
@@ -41,6 +43,11 @@ User.init(
     modelName: "Users",
   }
 );
-
+/** User Profile */
 User.hasOne(Profile, { foreignKey: 'userId', as: 'profile' });
+Profile.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
+User.hasMany(Friend, { foreignKey: 'userId', as: 'friends' });
+Friend.belongsTo(User, { foreignKey: 'friendId', as: 'user' });
+
 export default User;
