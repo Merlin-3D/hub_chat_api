@@ -23,9 +23,7 @@ export async function signup(req: Request, res: Response): Promise<void> {
       password: hashedPassword,
       tag: tag,
     });
-    console.log({
-      username,
-    })
+
     await Profile.create({
       userId: newUser.id,
       username,
