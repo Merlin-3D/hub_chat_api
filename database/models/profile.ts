@@ -3,7 +3,7 @@ import sequelize from "../config/sequelize";
 import User from "./user";
 
 class Profile extends Model {
-    public id!: number;
+  public id!: string;
   public userId!: string;
   public email!: string;
   public username!: string;
