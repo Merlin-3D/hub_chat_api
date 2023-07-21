@@ -1,6 +1,43 @@
 import { Request, Response } from "express";
 import { Friend, Profile, User } from "../database/models";
 import { Op } from "sequelize";
+import { cloneDeep } from "lodash";
+
+let pendingInvitations: Friend[] = [];
+let clients: any[] = [];
+
+function sendInvitationsUpdate(friend: Friend) {
+  // Vérifiez si un client est connecté avant d'envoyer la mise à jour
+  if (clients.length > 0) {
+    pendingInvitations = [...pendingInvitations, friend];
+    const clientInvitations = cloneDeep(pendingInvitations);
+    const data = JSON.stringify(clientInvitations);
+    clients.forEach((client) => {
+      client.res.write(`data: ${data}\n\n`); // Écriture de la mise à jour dans le flux SSE
+    });
+  }
+}
+
+export async function invitationStream(req: Request, res: Response) {
+  // Réglage des en-têtes SSE
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    Connection: "keep-alive",
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET",
+    "Access-Control-Allow-Headers": "Content-Type",
+  });
+
+  // Ajouter le client à la liste des clients connectés
+  const client = { id: Date.now(), res };
+  clients.push(client);
+
+  // Supprimer le client de la liste lorsque la connexion est fermée
+  req.on("close", () => {
+    clients = clients.filter((c) => c.id !== client.id);
+  });
+}
 
 export async function userProfile(req: Request, res: Response) {
   try {
@@ -25,40 +62,20 @@ export async function sendInviation(req: Request, res: Response) {
   try {
     const { userId, friendId } = req.body;
 
-    await Friend.create({
+    const invitation = await Friend.create({
       userId,
       friendId,
       isPending: true,
     });
-    res.status(201).json({ message: "Invitation envoyer" });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Une erreur est survenue" });
-  }
-}
-
-export async function getUserInvitations(req: Request, res: Response) {
-  try {
-    const keys = Object.keys(req.query);
-    const values = Object.values(req.query);
-
-    let filtersKeys = {};
-    for (let index = 0; index < keys.length; index++) {
-      const element = keys[index];
-      const value = values[index];
-      //@ts-ignore
-      filtersKeys[element] = value === "0" ? true : false;
-    }
-
-    const friends = await User.findOne({
-      where: { id: req.params.id },
+    const friendPending = await User.findOne({
+      where: { id: invitation.userId },
       attributes: { exclude: ["password", "updatedAt", "createdAt"] },
       include: [
         {
           model: Friend,
           as: "friends",
           where: {
-            [Op.and]: [filtersKeys],
+            id: invitation.id,
           },
           include: [
             {
@@ -76,7 +93,57 @@ export async function getUserInvitations(req: Request, res: Response) {
         },
       ],
     });
-    res.status(201).json({ data: friends?.friends });
+    res
+      .status(201)
+      .json({ message: "Invitation envoyer", data: friendPending?.friends });
+    sendInvitationsUpdate(friendPending?.friends!);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Une erreur est survenue" });
+  }
+}
+
+export async function getUserInvitations(req: Request, res: Response) {
+  try {
+    const keys = Object.keys(req.query);
+    const values = Object.values(req.query);
+
+    let filtersKeys = {};
+
+    for (let index = 0; index < keys.length; index++) {
+      const element = keys[index];
+      const value = values[index];
+      //@ts-ignore
+      filtersKeys[element] = value === "0" ? true : false;
+    }
+
+    const friends = await User.findOne({
+      where: { id: req.params.id },
+      attributes: { exclude: ["password", "updatedAt", "createdAt"] },
+      include: [
+        {
+          model: Friend,
+          as: "friends",
+          // where: {
+          //   [Op.and]: [filtersKeys],
+          // },
+          include: [
+            {
+              model: User,
+              as: "user",
+              attributes: { exclude: ["password", "updatedAt", "createdAt"] },
+              include: [
+                {
+                  model: Profile,
+                  as: "profile",
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    res.status(200).json({ data: friends?.friends });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Une erreur est survenue!" });

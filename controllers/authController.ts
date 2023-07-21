@@ -27,7 +27,7 @@ export async function signup(req: Request, res: Response): Promise<void> {
     await Profile.create({
       userId: newUser.id,
       username,
-      email
+      email,
     });
 
     res.status(201).json({ message: "Inscription réussie", user: newUser });
@@ -40,12 +40,18 @@ export async function signup(req: Request, res: Response): Promise<void> {
 }
 
 export async function login(req: Request, res: Response): Promise<void> {
+  
   try {
     const { email, password } = req.body;
-
     const user = await User.findOne({
       where: { email },
       attributes: { exclude: ["updatedAt", "createdAt"] },
+      include: [
+        {
+          model: Profile,
+          as: 'profile'
+        }
+      ]
     });
     if (!user) {
       res.status(401).json({ message: "Utilisateur non trouvé" });
