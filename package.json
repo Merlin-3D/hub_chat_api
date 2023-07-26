@@ -13,8 +13,9 @@
     "migration:revert": "npx sequelize-cli db:migrate:undo",
     "migration:revert:one": "npx sequelize-cli db:migrate:undo:all --to",
     "seed:generate": "npx sequelize-cli seed:generate --name",
-    "seed:run": "sh ./shell/run-seed.sh",
-    "seed:revert": "npx sequelize-cli db:seed:undo:all"
+    "seed:run": "npx sequelize-cli seed:generate --name",
+    "seed:revert": "npx sequelize-cli db:seed:undo:all",
+    "seed:all": "npx sequelize-cli db:seed:all"
   },
   "keywords": [],
   "author": "",

@@ -8,12 +8,14 @@ import {
   unBlockUser,
   userProfile,
   invitationStream,
+  findUserByUserName,
 } from "../controllers/userController";
 import { authenticate } from "../middlewares/authenticate";
 
 const userRouter = Router();
 
 userRouter.get("/:id/profile", authenticate, userProfile);
+userRouter.get("/:username/find", authenticate, findUserByUserName);
 userRouter.post("/invitation", authenticate, sendInviation);
 userRouter.get("/:id/invitations", authenticate, getUserInvitations);
 userRouter.get("/accept/:id/invitation", authenticate, acceptInvitation);

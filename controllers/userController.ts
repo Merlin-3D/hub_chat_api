@@ -3,13 +3,12 @@ import { Friend, Profile, User } from "../database/models";
 import { Op } from "sequelize";
 import { cloneDeep } from "lodash";
 
-let pendingInvitations: Friend[] = [];
+let pendingInvitations: Friend;
 let clients: any[] = [];
 
 function sendInvitationsUpdate(friend: Friend) {
-  // Vérifiez si un client est connecté avant d'envoyer la mise à jour
   if (clients.length > 0) {
-    pendingInvitations = [...pendingInvitations, friend];
+    pendingInvitations = friend;
     const clientInvitations = cloneDeep(pendingInvitations);
     const data = JSON.stringify(clientInvitations);
     clients.forEach((client) => {
@@ -58,6 +57,33 @@ export async function userProfile(req: Request, res: Response) {
   }
 }
 
+export async function findUserByUserName(req: Request, res: Response) {
+  try {
+    const users = await User.findAll({
+      attributes: { exclude: ["password"] },
+      include: [
+        {
+          model: Profile,
+          as: "profile",
+          where: {
+            username: {
+              [Op.iLike]: req.params.username,
+            },
+          },
+        },
+        {
+          model: Friend,
+          as: "friends",
+        },
+      ],
+    });
+    res.status(200).json({ users });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Une erreur est survenue" });
+  }
+}
+
 export async function sendInviation(req: Request, res: Response) {
   try {
     const { userId, friendId } = req.body;
@@ -67,6 +93,7 @@ export async function sendInviation(req: Request, res: Response) {
       friendId,
       isPending: true,
     });
+    
     const friendPending = await User.findOne({
       where: { id: invitation.userId },
       attributes: { exclude: ["password", "updatedAt", "createdAt"] },
@@ -91,11 +118,15 @@ export async function sendInviation(req: Request, res: Response) {
             },
           ],
         },
+        {
+          model: Profile,
+          as: "profile",
+        },
       ],
-    });
+    }); 
     res
       .status(201)
-      .json({ message: "Invitation envoyer", data: friendPending?.friends });
+      .json({ message: "Invitation envoyer", data: friendPending });
     sendInvitationsUpdate(friendPending?.friends!);
   } catch (error) {
     console.error(error);
@@ -161,7 +192,7 @@ export async function acceptInvitation(req: Request, res: Response) {
         where: {
           id: req.params.id,
         },
-      }
+      },
     );
     res.status(200).json({ message: "L'invitaion a bien été accepter" });
   } catch (error) {
